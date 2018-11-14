@@ -55,9 +55,10 @@ describe MailCatcher do
       end
   end
 
-  before do
+  before {
     selenium.navigate.to("http://127.0.0.1:#{HTTP_PORT}")
-  end
+    selenium.manage.window.size = Selenium::WebDriver::Dimension.new 1240, 1240
+  }
 
   def messages_element
     selenium.find_element(:id, "messages")
@@ -97,6 +98,18 @@ describe MailCatcher do
 
   def iframe_element
     selenium.find_element(:css, "#message iframe")
+  end
+
+  def message_details_to
+    selenium.find_element(:css, "#message dd.to")
+  end
+
+  def message_details_cc
+    selenium.find_element(:css, "#message dd.cc")
+  end
+
+  def message_details_bcc
+    selenium.find_element(:css, "#message dd.bcc")
   end
 
   def body_element
@@ -208,6 +221,27 @@ describe MailCatcher do
     body_element.text.must_include "Content-Type: multipart/alternative; boundary=BOUNDARY--198849662"
     body_element.text.must_include "Plain text mail"
     body_element.text.must_include "<em>HTML</em> mail"
+  end
+
+  it "displays CC and BCC recipients ifthey exists" do
+    deliver_example("with_cc", :to => ["blah@blah.com", "cc@blah.com", "bcc@net.com"])
+
+    message_from_element.text.must_include DEFAULT_FROM
+    message_subject_element.text.must_equal "Test Cc and BCC"
+    Time.parse(message_received_element.text).must_be_close_to Time.now, 5
+
+    message_row_element.click
+
+    message_details_to.text.must_include "blah@blah.com"
+    message_details_cc.text.must_include "cc@blah.com"
+    message_details_bcc.text.must_include "bcc@net.com"
+
+    deliver_example("plainmail")
+
+    message_row_element.click
+
+    message_details_cc.displayed?.must_equal false
+    message_details_bcc.displayed?.must_equal false
   end
 
   it "catches and displays an unknown message as source" do
